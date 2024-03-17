@@ -1,11 +1,11 @@
-name: ETL workflow for group 20
+name: ETL Workflow for Group 10
 
 on:
 #  schedule:
 #    - cron: '0 */3 * * *' # Run every 3 hours
   push:
     branches: [ main ]
-    
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,18 +26,26 @@ jobs:
       - name: Install packages
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          Rscript -e 'install.packages(c("ggplot2","dplyr","readr","RSQLite"))'
-      - name: Execute R script
+          Rscript -e 'install.packages(c("ggplot2", "dplyr", "readr", "tidyr", "RSQLite", "fakir", "charlatan", "generator","DBI"))'
+      - name: Execute R script to update the database with new entry (second data phase), before appending, it compares new data with the existing database to prevent duplicate entries in database
         run: |
-           Rscript R/Load_data.R
-      - name: Add files
+          Rscript R/Second_Phase_Data_Load.R
+      - name: Execute R script to validate the new entries, their formats and referential integrity for each table
+        run: |
+          Rscript R/Validation.R    
+      - name: Execute R script to update the analysis (plots, etc.) by considering new data arrivals 
+        run: |
+          Rscript Data_Analysis/DataAnalysis.R 
+      - name: Add collaborator 1
         run: |
           git config --global user.email "marwahapulkit22@gmail.com"
           git config --global user.name "Pulkit2206"
-          git add --all figures/
+      - name: Add modified files
+        run: |
+          git add .
       - name: Commit files
         run: |
-          git commit -m "Add regression plot figure"
+          git commit -m "Add analysis results"
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
