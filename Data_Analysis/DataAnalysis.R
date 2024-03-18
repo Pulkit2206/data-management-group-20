@@ -1,9 +1,7 @@
 library(dplyr)
 library(tidyr)
-library(rvest)
 library(ggplot2)
 library(lubridate)
-library(sqldf)
 
 # 1. Users Table
 users_table <- combined_data %>% 
