@@ -32,8 +32,11 @@ jobs:
           Rscript R/Load_data.R
       - name: Execute R script to validate the new entries, their formats and referential integrity for each table
         run: |
-          Rscript R/Validation.R    
+          Rscript R/Table_Creation.R    
       - name: Execute R script to update the analysis (plots, etc.) by considering new data arrivals 
+        run: |
+          Rscript R/Validation.R    
+      - name: Execute R script to update the analysis (plots, etc.) by considering new data arrivals
         run: |
           Rscript Data_Analysis/DataAnalysis.R 
       - name: Add collaborator 1
