@@ -26,7 +26,7 @@ jobs:
       - name: Install packages
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          Rscript -e 'install.packages(c("ggplot2", "dplyr", "readr", "tidyr", "RSQLite", "fakir", "charlatan", "generator","DBI"))'
+          Rscript -e 'install.packages(c("ggplot2", "dplyr", "readr", "tidyr", "RSQLite", "fakir", "charlatan", "generator","DBI","rvest"))'
       - name: Execute R script to update the database with new entry (second data phase), before appending, it compares new data with the existing database to prevent duplicate entries in database
         run: |
           Rscript R/Load_data.R
