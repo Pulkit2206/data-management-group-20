@@ -7,7 +7,7 @@ library(RSQLite)
 library(dplyr)
 
 # Establishing a connection to the SQLite database
-my_connection <- dbConnect(SQLite(), "ecommerce.db")
+my_connection <- dbConnect(SQLite(), "database/database.db")
 
 # Creating the 'user' table
 dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS user(
@@ -18,20 +18,12 @@ dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS user(
   user_password VARCHAR(20) NOT NULL,
   user_mobile_number VARCHAR(20) NOT NULL,
   user_membership_status VARCHAR(20) NOT NULL,
-  PRIMARY KEY (user_id)
-)")
-
-# Creating the 'address' table
-dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS address(
-  address_id INT,
-  user_id INT,
   address_city VARCHAR(30) NOT NULL,
   address_country VARCHAR(30) NOT NULL,
   address_state VARCHAR(20) NOT NULL,
   address_postcode VARCHAR(20) NOT NULL,
   address_type VARCHAR(20) NOT NULL,
-  PRIMARY KEY (address_id),
-  FOREIGN KEY (user_id) REFERENCES user(user_id)
+  PRIMARY KEY (user_id)
 )")
 
 # Creating the 'product' table
