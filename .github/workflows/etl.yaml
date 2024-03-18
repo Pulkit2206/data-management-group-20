@@ -59,13 +59,18 @@ jobs:
         run: | 
           git config --global user.email "namit2000.singh@gmail.com"
           git config --global user.name "Namitt"
-      - name: Add modified files
+      - name: Check if database.db has changed
+        id: check-db
         run: |
-          git add .
-      - name: Commit files
+          git diff --exit-code --name-only | grep 'database.db' && echo "::set-output name=changed::true" || echo "::set-output name=changed::false"
+      - name: Commit and push if database.db has changed
+        if: steps.check-db.outputs.changed == 'true'
         run: |
-          git commit -m "Add analysis results"
+          git add database.db
+          git commit -m "Update database.db"
+          git push
       - name: Push changes
+        if: steps.check-db.outputs.changed == 'true'
         uses: ad-m/github-push-action@v0.6.0
         with:
             github_token: ${{ secrets.GITHUB_TOKEN }}
