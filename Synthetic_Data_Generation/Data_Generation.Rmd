@@ -66,7 +66,7 @@ generate_synthetic_data <- function(n) {
   product_code <- sample(1000:9999, n, replace = TRUE)  # Random 4-digit values
   product_description <- stri_rand_strings(n, 10, pattern = "[A-Za-z0-9]")
   product_dimensions <- paste0(sample(1:10, n, replace = TRUE), "x", sample(1:10, n, replace = TRUE), "x", sample(1:10, n, replace = TRUE), " inches")
-  product_id <- sample(1000:9999, n, replace = TRUE)  # Random 4-digit values
+  product_id <- sample(1000:9999, n, replace = FALSE)  # Random 4-digit values
   product_name <- replicate(n, paste0(sample(LETTERS, 5, replace = TRUE), collapse = ""))  # Random 5-letter strings
   product_reviews <- sample(1:100, n, replace = TRUE)
   product_stock <- sample(1:1000, n, replace = TRUE)
@@ -473,34 +473,29 @@ Having formed the large dataset, we are now going to create separate tables for 
 # 1. Users Table
 users_table <- combined_data %>% 
   distinct(user_id, user_email, user_mobile_number, .keep_all = TRUE) %>% 
-  select(user_id, user_first_name, user_last_name, user_email, user_password, user_mobile_number, user_membership_status)
+  select(user_id, user_first_name, user_last_name, user_email, user_password, user_mobile_number, user_membership_status, address_id, user_id, address_city, address_country, address_state, address_postcode, address_type)
 write.csv(users_table, "users_table.csv", row.names = FALSE)
 
-# 2. Addresses Table
-addresses_table <- combined_data %>%
-  distinct(address_id, .keep_all = TRUE) %>%
-  select(address_id, user_id, address_city, address_country, address_state, address_postcode, address_type)
-write.csv(addresses_table, "addresses_table.csv", row.names = FALSE)
 
-# 3. Products Table
+# 2. Products Table
 products_table <- combined_data %>%
   distinct(product_id, .keep_all = TRUE) %>%
   select(product_id, product_description, product_code, category_id, product_stock, product_price, product_name, product_brand, product_weight, product_dimensions, product_published_datetime, product_average_star_ratings, product_reviews)
 write.csv(products_table, "products_table.csv", row.names = FALSE)
 
-# 4. Product Categories Table
+# 3. Product Categories Table
 product_categories_table <- combined_data %>%
   distinct(category_id, .keep_all = TRUE) %>%
   select(category_id, category_name, category_description)
 write.csv(product_categories_table, "product_categories_table.csv", row.names = FALSE)
 
-# 5. Sellers Table
+# 4. Sellers Table
 sellers_table <- combined_data %>%
   distinct(seller_id, .keep_all = TRUE) %>%
   select(seller_id, seller_name, seller_address, seller_delivery_method)  # Assuming product_id is linked to sellers
 write.csv(sellers_table, "sellers_table.csv", row.names = FALSE)
 
-# 6. Order_details Table
+# 5. Order_details Table
 if (nrow(combined_data) != nrow(distinct(combined_data, order_detail_id))) {
   stop("Duplicate order_detail_id found.")
 }
@@ -509,19 +504,19 @@ order_details_table <- combined_data %>%
   select(order_detail_id, product_id, order_qty, order_price, order_status, order_datetime, user_id)
 write.csv(order_details_table, "order_details_table.csv", row.names = FALSE)
 
-# 7. Payments Table
+# 6. Payments Table
 payments_table <- combined_data %>%
   distinct(payment_id, .keep_all = TRUE) %>%
   select(payment_id, payment_datetime, payment_method, payment_amount, user_id, order_detail_id)
 write.csv(payments_table, "payments_table.csv", row.names = FALSE)
 
-# 8. Deliveries Table
+# 7. Deliveries Table
 deliveries_table <- combined_data %>%
   distinct(delivery_id, .keep_all = TRUE) %>%
   select(delivery_id, delivery_type, delivery_status, delivery_datetime, address_id, user_id, order_detail_id, shipper_id)
 write.csv(deliveries_table, "deliveries_table.csv", row.names = FALSE)
 
-# 9. Shippers Table
+# 8. Shippers Table
 shippers_table <- combined_data %>%
   distinct(shipper_id, .keep_all = TRUE) %>%
   select(shipper_id, shipper_company, shipper_contact)
