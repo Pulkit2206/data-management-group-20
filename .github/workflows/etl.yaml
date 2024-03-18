@@ -40,6 +40,18 @@ jobs:
         run: |
           git config --global user.email "marwahapulkit22@gmail.com"
           git config --global user.name "Pulkit2206"
+      - name: Add collaborator 2
+        run: | 
+          git config --global user.email "twaseenshazaib@hotmail.co.uk"
+          git config --global user.name "shazaibt"
+      - name: Add collaborator 3
+        run: | 
+          git config --global user.email "Jiayue.liu.3@warwick.ac.uk"
+          git config --global user.name "Leaaaaaaausername"
+      - name: Add collaborator 4
+        run: | 
+          git config --global user.email "amaliasharfina@gmail.com"
+          git config --global user.name "amaliasharfina"
       - name: Add modified files
         run: |
           git add .
