@@ -61,6 +61,8 @@ jobs:
           git config --global user.name "Namitt"
       - name: Commit files
         run: |
+          git add database/database.db
+          git add Rplots.pdf
           git commit -m "Add regression plot figure"
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
