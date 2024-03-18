@@ -1,0 +1,532 @@
+##Part 2.1
+
+```{r}
+library(dplyr)
+library(stringi)
+```
+
+#Creation of Large Dataset
+
+First we endeavoured to create a large dataset which contained all the attributes and values. In this large dataset, the same users could buy multiple products. We used a combination of r and mockaroo to build this synthetic data and then used cbind to combine the columns. Here is the code we used to create the synthetic data in r.
+
+```{r}
+
+# Function to generate synthetic data for other columns with logic requirements
+generate_synthetic_data <- function(n) {
+  # Generate product_published_datetime
+  product_published_datetime <- as.POSIXct(sample(seq(as.POSIXct('2023-01-01'), as.POSIXct('2023-12-01'), by = "day"), n, replace = TRUE))
+  
+  # Generate order_datetime based on product_published_datetime
+  order_datetime <- product_published_datetime + runif(n, 0, 30*24*60*60) # Assuming order placed within 30 days of product publication
+  
+  # Generate payment_datetime based on order_datetime
+  payment_datetime <- order_datetime + runif(n, 0, 3*24*60*60) # Assuming payment made within 7 days of order
+  
+  # Generate delivery_datetime based on payment_datetime
+  delivery_datetime <- payment_datetime + runif(n, 0, 14*24*60*60) # Assuming delivery within 14 days of payment
+  
+  # Adjust delivery_datetime to ensure the difference between order_datetime and delivery_datetime is less than 10 days
+  delivery_datetime <- pmin(delivery_datetime, order_datetime + 10*24*60*60)
+  
+  # Randomize delivery status
+  delivery_status <- sample(c("Pending", "Out for Delivery", "Delivered"), n, replace = TRUE)
+  
+  # Update delivery_datetime to NA for orders not marked as "Delivered"
+  delivery_datetime[delivery_status != "Delivered"] <- NA
+  
+  
+  delivery_status[delivery_status == "Out for Delivery" & as.POSIXct(delivery_datetime) == as.POSIXct(payment_datetime)] <- "Delivered"
+  
+  # Randomize order status
+  order_status <- sample(c("Pending", "Processing", "Shipped", "Delivered"), n, replace = TRUE)
+  
+  # Update order_status and delivery_status for deliveries before December 25, 2023
+  order_status[delivery_datetime < as.POSIXct("2023-12-20")] <- "Delivered"
+  delivery_status[delivery_datetime < as.POSIXct("2023-12-20")] <- "Delivered"
+  
+
+  payment_status <- rep("paid", n)
+  
+  
+  # Generate a list of product brands with more options
+  product_brands <- c("Brand A", "Brand B", "Brand C", "Brand D", "Brand E", "Brand F", "Brand G", "Brand H", "Brand I", "Brand J")
+  
+  # Generate other columns as before
+  delivery_id <- sample(1000:9999, n, replace = FALSE)  # Random 4-digit values
+  delivery_type <- sample(c("Standard", "Express", "Same-Day", "Pickup"), n, replace = TRUE)
+  order_detail_id <- sample(1000:9999, n, replace = FALSE)  # Random 4-digit values
+  order_qty <- sample(1:10, n, replace = TRUE)
+  product_price <- round(runif(n, 10, 500), 2)  # Round to two decimal places
+  order_price <- round(order_qty * product_price, 2)  # Round to two decimal places
+  payment_amount <- order_price  # Payment amount equals order price except for when a membership status is prime (they have a 5% discount which we will change later)
+  payment_id <- sample(1000:9999, n, replace = FALSE)  # Random 4-digit values
+  payment_method <- sample(c("Credit Card", "Debit Card", "PayPal"), n, replace = TRUE)
+  product_average_star_ratings <- runif(n, 1, 5)
+  product_brand <- sample(product_brands, n, replace = TRUE)  # Updated to include more product brands
+  product_code <- sample(1000:9999, n, replace = TRUE)  # Random 4-digit values
+  product_description <- stri_rand_strings(n, 10, pattern = "[A-Za-z0-9]")
+  product_dimensions <- paste0(sample(1:10, n, replace = TRUE), "x", sample(1:10, n, replace = TRUE), "x", sample(1:10, n, replace = TRUE), " inches")
+  product_id <- sample(1000:9999, n, replace = TRUE)  # Random 4-digit values
+  product_name <- replicate(n, paste0(sample(LETTERS, 5, replace = TRUE), collapse = ""))  # Random 5-letter strings
+  product_reviews <- sample(1:100, n, replace = TRUE)
+  product_stock <- sample(1:1000, n, replace = TRUE)
+  product_weight <- round(runif(n, 0.1, 50), 2)  # Round to two decimal places
+  seller_address <- replicate(n, paste0("Seller Address ", sample(1:100, 1)))
+  seller_delivery_method <- sample(c("Standard Shipping", "Express Shipping", "Pickup", "Courier"), n, replace = TRUE)
+  seller_id <- sample(1000:9999, n, replace = TRUE)  # Random 4-digit values
+  seller_name <- replicate(n, paste0("Seller ", sample(LETTERS, 3, replace = TRUE), collapse = ""))
+  shipper_company <- sample(c("Shipper A", "Shipper B", "Shipper C", "Shipper D", "Shipper E", "Shipper F", "Shipper G", "Shipper H", "Shipper I", "Shipper J", NA), n, replace = TRUE)
+  shipper_contact <- ifelse(is.na(shipper_company), NA, sample(1000000000:9999999999, n, replace = TRUE))
+  shipper_id <- sample(1000:9999, n, replace = TRUE)  # Random 4-digit values
+  
+# Inside your generate_synthetic_data function:
+
+# All deliveries made before December 10th have been delivered
+# and ensuring the logic sets order_status and delivery_status to valid values
+for (i in 1:n) {
+  if (order_datetime[i] < as.POSIXct("2023-12-10")) {
+    order_status[i] <- "Delivered"
+    delivery_status[i] <- "Delivered"
+    delivery_datetime[i] <- order_datetime[i] + runif(1, 1*24*60*60, 14*24*60*60)  # Delivery within 1 to 14 days of order
+  } else {
+    # Ensure these statuses are not set to NA or any unintended value
+    order_status[i] <- sample(c("Pending", "Processing", "Shipped"), 1)
+    delivery_status[i] <- ifelse(order_status[i] == "Shipped", "Out for Delivery", "Pending")
+  }
+}
+
+
+# Ensure delivery_status is set to "Delivered" when order_status is "Delivered"
+delivery_status[order_status == "Delivered"] <- "Delivered"
+
+  
+  # Combine all the generated data into a single data frame
+  synthetic_data <- data.frame(
+    delivery_datetime,
+    delivery_id,
+    delivery_status,
+    delivery_type,
+    order_datetime,
+    order_detail_id,
+    order_price,
+    order_qty,
+    order_status,
+    payment_status,
+    payment_amount,
+    payment_datetime = payment_datetime, 
+    payment_id,
+    payment_method,
+    product_average_star_ratings,
+    product_brand,
+    product_code,
+    product_description,
+    product_dimensions,
+    product_id,
+    product_name,
+    product_price,
+    product_published_datetime,
+    product_reviews,
+    product_stock,
+    product_weight,
+    seller_address,
+    seller_delivery_method,
+    seller_id,
+    seller_name,
+    shipper_company,
+    shipper_contact,
+    shipper_id
+  )
+  
+  return(synthetic_data)
+}
+
+
+
+
+# Generate synthetic data for 1400 records
+synthetic_data <- generate_synthetic_data(1400)
+
+
+```
+
+
+#Mockaroo dataset
+The Mockaroo data that we read in, contained information about the user as well as category information.
+
+```{r}
+#Reading in Mockaroo data
+mockaroo <- read.csv("mockaroo_data (2).csv")
+```
+
+```{r}
+
+# Change the column names in the mockaroo dataframe to make all the columns consistent
+colnames(mockaroo) <- gsub("\\.", "_", colnames(mockaroo))
+
+
+# Changing address_id to be 6 digits
+mockaroo$address_id <- ifelse(nchar(as.character(mockaroo$address_id)) == 6, 
+                              mockaroo$address_id, 
+                              sample(100000:999999, nrow(mockaroo), replace = TRUE))
+
+
+# Changing user_id to be 6 digits
+mockaroo$user_id <- ifelse(nchar(as.character(mockaroo$user_id)) == 6, 
+                              mockaroo$user_id, 
+                              sample(100000:999999, nrow(mockaroo), replace = TRUE))
+# Print the updated column names
+print(colnames(mockaroo))
+
+
+# Check for duplicate user_id values
+duplicate_ids <- mockaroo$user_id[duplicated(mockaroo$user_id)]
+
+# If duplicates exist, modify them
+if (length(duplicate_ids) > 0) {
+  # For simplicity, you could append a suffix or generate a new ID
+  # Here's a simple approach to append a suffix to make them unique
+  for (id in duplicate_ids) {
+    # Find the rows with the duplicated ID
+    duplicate_rows <- which(mockaroo$user_id == id)
+    
+    # Append a suffix to make each duplicated ID unique
+    for (i in seq_along(duplicate_rows)) {
+      mockaroo$user_id[duplicate_rows[i]] <- paste(id, i, sep = "_")
+    }
+  }
+}
+
+# Verify that all user_id values are now unique
+sum(duplicated(mockaroo$user_id))  # This should return 0 if all IDs are unique
+
+```
+
+#Category Tidying
+We decided to reduce the number of categories of this artificial e-commerce company later on in the process as we decided, that given this is just a university company, the number of categories of products they wish to sell might be more limited. We also wnted to change the weights, (books have a greater weight)
+
+
+#Adding Appropriate Descriptions
+
+```{r}
+
+# Define the category names
+category_names <- c(
+  "Electronics", "Clothing", "Shoes & Jewelry", "Toys & Games",
+  "Books", "Grocery & Gourmet Food")
+
+# Define the category descriptions
+category_descriptions <- c(
+  "This category includes products like smartphones, laptops, cameras, televisions, headphones, and other electronic gadgets.",
+  "Apparel for men, women, and children are available in this category.",
+  "A variety of shoes, jewelry including rings, necklaces, bracelets, and earrings are available in this category.",
+  "A variety of toys, games, puzzles, and other recreational products for children of all ages are available in this category.",
+  "This category encompasses a vast collection of books including fiction, non-fiction, textbooks, children's books, and more.",
+  "Food and beverage products ranging from pantry staples to gourmet and specialty items are available here.")
+
+
+# Update the category_description column based on category_name
+mockaroo <- mutate(mockaroo,
+                   category_description = case_when(
+                     category_name == "Electronics" ~ category_descriptions[1],
+                     category_name == "Clothing" ~ category_descriptions[2],
+                     category_name == "Shoes & Jewelry" ~ category_descriptions[3],
+                     category_name == "Toys & Games" ~ category_descriptions[4],
+                     category_name == "Books" ~ category_descriptions[5],
+                     category_name == "Grocery & Gourmet Food" ~ category_descriptions[6],
+                     TRUE ~ NA_character_
+                   ))
+
+
+```
+
+
+#Incorporating logic with Category Information
+
+```{r}
+# First, ensure that each unique category name and description pair has a unique ID
+category_mapping <- mockaroo %>%
+  distinct(category_name, category_description) %>%
+  mutate(category_id = row_number())  # Assign a new unique ID
+
+# Join the original mockaroo dataframe with the category_mapping to update category_ids
+mockaroo <- mockaroo %>%
+  select(-category_id) %>%
+  left_join(category_mapping, by = c("category_name", "category_description"))
+
+# Print the modified data frame
+print(mockaroo)
+
+```
+
+
+#Duplicating user_id
+
+We created repeating user_id values and made sure that all user information and address information correspond correctly to each other
+
+
+```{r}
+
+
+# Define the maximum number of repeats for each user
+max_repeats <- 3
+
+# Create a dataframe to store the repeated user information
+repeated_users <- mockaroo %>%
+  group_by(user_id) %>%
+  slice(rep(1:n(), each = sample(1:max_repeats, length(user_id), replace = TRUE)))
+
+# Print the first few rows to verify the structure
+print(head(repeated_users))
+
+# Now, let's ensure that 'user_id' correctly corresponds to the correct user information
+# Group by 'user_id' and sample the values for user information
+repeated_users <- repeated_users %>%
+  group_by(user_id) %>%
+  mutate(
+    user_first_name = sample(user_first_name, 1),
+    user_last_name = sample(user_last_name, 1),
+    user_email = sample(user_email, 1),
+    user_membership_status = sample(user_membership_status, 1)
+  )
+
+# Now, let's ensure that 'user_ID' correctly corresponds to the correct address information
+# Group by 'user_ID' and sample the values for address information
+repeated_users <- repeated_users %>%
+  group_by(user_id) %>%
+  mutate(
+    address_id = sample(address_id, 1),
+    address_city = sample(address_city, 1),
+    address_country = sample(address_country, 1),
+    address_postcode = sample(address_postcode, 1),
+    address_state = sample(address_state, 1),
+    address_type = sample(address_type, 1)
+  )
+
+# Print the updated dataframe
+print(repeated_users)
+
+
+```
+
+
+```{r}
+# Check for duplicated user_ID values
+duplicated_user_ids <- repeated_users[duplicated(repeated_users$user_id), "user_id"]
+
+# Print duplicated user IDs
+print(duplicated_user_ids)
+
+# Count the number of duplicated user_ID values
+num_repeated_values <- sum(duplicated(repeated_users$user_id))
+
+# Print the number of repeated values
+print(num_repeated_values)
+```
+
+```{r}
+
+# Ensure it has exactly 1400 rows
+
+# If the dataset has more than 1400 rows, truncate it
+if (nrow(repeated_users) > 1400) {
+  repeated_users <- repeated_users[1:1400, ]
+}
+
+# If the dataset has fewer than 2000 rows, duplicate rows to reach 2000
+while (nrow(repeated_users) < 1400) {
+  repeated_users <- rbind(repeated_users, repeated_users[1:(1400 - nrow(mockaroo)), ])
+}
+
+
+
+
+# Limit the dataframe to 2000 rows
+mockaroo_final <- head(repeated_users, 1400)
+
+# Print the limited dataframe
+print(mockaroo_final)
+```
+
+```{r}
+# Combine the limited dataframe with the synthetic data
+combined_data <- cbind(mockaroo_final, synthetic_data)
+
+# Write the combined dataset to a new CSV file
+write.csv(combined_data, "combined_mockaroo_with_synthetic.csv", row.names = FALSE)
+
+# Check if the CSV file is created
+file.exists("combined_mockaroo_with_synthetic.csv")
+```
+
+
+#Incorporating Some More logic and Data Tidying
+
+```{r}
+# Read the combined data from the CSV file
+combined_data <- read.csv("combined_mockaroo_with_synthetic.csv")
+
+combined_data <- combined_data %>%
+  mutate(payment_amount = if_else(user_membership_status == "Prime",
+                                  round(payment_amount * 0.95, 2),
+                                  payment_amount))
+```
+
+
+
+```{r}
+
+#Ensuring that we only have shipping information, when the seller delivery method is express shipping or standard shipping
+
+# Create a vector of shipper companies, IDs, and contacts from A to J
+shippers <- data.frame(
+  shipper_company = paste0("Shipper ", LETTERS[1:10]),
+  shipper_id = sample(1000:9999, 10, replace = FALSE),  # Random 4-digit values for shipper IDs
+  shipper_contact = sample(1000000000:9999999999, 10, replace = FALSE)  # Random 10-digit values for shipper contacts
+)
+
+# Identify rows where the seller delivery method is Express Shipping or Standard Shipping
+express_standard_rows <- combined_data$seller_delivery_method %in% c("Express Shipping", "Standard Shipping")
+
+# Assign shipper information only to rows with Express Shipping or Standard Shipping
+combined_data$shipper_company[express_standard_rows] <- sample(shippers$shipper_company, sum(express_standard_rows), replace = TRUE)
+combined_data$shipper_id[express_standard_rows] <- sample(shippers$shipper_id, sum(express_standard_rows), replace = TRUE)
+combined_data$shipper_contact[express_standard_rows] <- sample(shippers$shipper_contact, sum(express_standard_rows), replace = TRUE)
+
+# For other rows, set shipper information to NA
+combined_data$shipper_company[!express_standard_rows] <- NA
+combined_data$shipper_id[!express_standard_rows] <- NA
+combined_data$shipper_contact[!express_standard_rows] <- NA
+
+
+```
+
+
+```{r}
+# Ensuring values are rounded to 2 decimal places
+
+combined_data$product_average_star_ratings <- round(combined_data$product_average_star_ratings, 2)
+
+```
+
+
+
+```{r}
+# Group the data by product_code and sample one value for each column
+combined_data <- combined_data %>%
+  group_by(product_code) %>%
+  mutate(
+    product_brand = sample(product_brand, 1),
+    product_dimensions = sample(product_dimensions, 1),
+    product_average_star_ratings = sample(product_average_star_ratings, 1),
+    product_name = sample(product_name, 1),
+    product_price = sample(product_price, 1),
+    product_published_datetime = sample(product_published_datetime, 1),
+    product_reviews = sample(product_reviews, 1)
+  ) %>%
+  ungroup()
+#Note that we kept product_ID unique
+```
+
+
+
+```{r}
+# Ensure order_status is Processing if delivery_status is Pending
+combined_data$order_status <- ifelse(combined_data$delivery_status == "Pending", "Processing", combined_data$order_status)
+
+# Ensure order_status is Shipped if delivery_status is Out for Delivery
+combined_data$order_status <- ifelse(combined_data$delivery_status == "Out for Delivery", "Shipped", combined_data$order_status)
+
+# Ensure order_status is Pending if payment_status is Pending
+combined_data$order_status <- ifelse(combined_data$payment_status == "pending", "Pending", combined_data$order_status)
+
+
+```
+
+
+```{r}
+
+# Since the payment is made, the order is considered at least "Processing"
+combined_data$order_status <- ifelse(combined_data$order_status %in% c("Pending", "Processing"), "Processing", combined_data$order_status)
+
+
+# Assuming payment_datetime should be after order_datetime but before or equal to the delivery_datetime
+combined_data$payment_datetime <- ifelse(is.na(combined_data$payment_datetime) | combined_data$payment_datetime < combined_data$order_datetime,
+                                         combined_data$order_datetime + runif(nrow(combined_data), 1, 72)*60*60, # adding a random number of hours (1 to 72) to the order_datetime
+                                         combined_data$payment_datetime)
+
+combined_data$payment_datetime <- pmin(combined_data$payment_datetime, combined_data$delivery_datetime) 
+
+```
+
+
+
+```{r}
+# Saving combined_data as CSV
+write.csv(combined_data, "final_ecommerce.csv", row.names = FALSE)
+```
+
+#Making Multiple Tables
+
+Having formed the large dataset, we are now going to create separate tables for each entity and its attributes ensuring uniqueness for the primary key attributes.
+
+```{r}
+# 1. Users Table
+users_table <- combined_data %>% 
+  distinct(user_id, user_email, user_mobile_number, .keep_all = TRUE) %>% 
+  select(user_id, user_first_name, user_last_name, user_email, user_password, user_mobile_number, user_membership_status)
+write.csv(users_table, "users_table.csv", row.names = FALSE)
+
+# 2. Addresses Table
+addresses_table <- combined_data %>%
+  distinct(address_id, .keep_all = TRUE) %>%
+  select(address_id, user_id, address_city, address_country, address_state, address_postcode, address_type)
+write.csv(addresses_table, "addresses_table.csv", row.names = FALSE)
+
+# 3. Products Table
+products_table <- combined_data %>%
+  distinct(product_id, .keep_all = TRUE) %>%
+  select(product_id, product_description, product_code, category_id, product_stock, product_price, product_name, product_brand, product_weight, product_dimensions, product_published_datetime, product_average_star_ratings, product_reviews)
+write.csv(products_table, "products_table.csv", row.names = FALSE)
+
+# 4. Product Categories Table
+product_categories_table <- combined_data %>%
+  distinct(category_id, .keep_all = TRUE) %>%
+  select(category_id, category_name, category_description)
+write.csv(product_categories_table, "product_categories_table.csv", row.names = FALSE)
+
+# 5. Sellers Table
+sellers_table <- combined_data %>%
+  distinct(seller_id, .keep_all = TRUE) %>%
+  select(seller_id, seller_name, seller_address, seller_delivery_method)  # Assuming product_id is linked to sellers
+write.csv(sellers_table, "sellers_table.csv", row.names = FALSE)
+
+# 6. Order_details Table
+if (nrow(combined_data) != nrow(distinct(combined_data, order_detail_id))) {
+  stop("Duplicate order_detail_id found.")
+}
+
+order_details_table <- combined_data %>%
+  select(order_detail_id, product_id, order_qty, order_price, order_status, order_datetime, user_id)
+write.csv(order_details_table, "order_details_table.csv", row.names = FALSE)
+
+# 7. Payments Table
+payments_table <- combined_data %>%
+  distinct(payment_id, .keep_all = TRUE) %>%
+  select(payment_id, payment_datetime, payment_method, payment_amount, user_id, order_detail_id)
+write.csv(payments_table, "payments_table.csv", row.names = FALSE)
+
+# 8. Deliveries Table
+deliveries_table <- combined_data %>%
+  distinct(delivery_id, .keep_all = TRUE) %>%
+  select(delivery_id, delivery_type, delivery_status, delivery_datetime, address_id, user_id, order_detail_id, shipper_id)
+write.csv(deliveries_table, "deliveries_table.csv", row.names = FALSE)
+
+# 9. Shippers Table
+shippers_table <- combined_data %>%
+  distinct(shipper_id, .keep_all = TRUE) %>%
+  select(shipper_id, shipper_company, shipper_contact)
+write.csv(shippers_table, "shippers_table.csv", row.names = FALSE)
+
+```
+
+
