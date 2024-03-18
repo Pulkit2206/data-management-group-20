@@ -63,11 +63,11 @@ jobs:
         id: check-db
         run: |
           git diff --exit-code --name-only | grep 'database.db' && echo "::set-output name=changed::true" || echo "::set-output name=changed::false"
-      - name: Commit and push if ecomdata.db has changed
+      - name: Commit and push if database.db has changed
         if: steps.check-db.outputs.changed == 'true'
         run: |
-          git add ecomdata.db
-          git commit -m "Update ecomdata.db"
+          git add database.db
+          git commit -m "Update database.db"
           git push
       - name: Push changes
         if: steps.check-db.outputs.changed == 'true'
