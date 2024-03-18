@@ -152,42 +152,10 @@ ingest_order_details_data <- function(df, connection) {
   }
 }
 
-# Function to ingest payment data
-ingest_payment_data <- function(df, connection) {
-  required_columns <- c("payment_id", "payment_method", "payment_amount", "user_id", "order_detail_id")
-  df <- df[!rowSums(is.na(df[required_columns])) > 0, ]
-  
-  for(i in 1:nrow(df)) {
-    # Check for duplicate payment_id
-    existing_ids <- dbGetQuery(connection, sprintf("SELECT payment_id FROM payment WHERE payment_id = '%s'", df$payment_id[i]))
-    if(nrow(existing_ids) > 0) {
-      cat(sprintf("Skipping duplicate entry for payment_id: %s\n", df$payment_id[i]))
-      next
-    }
-    
-    # Ensure referenced user_id and order_detail_id exist
-    user_exists <- dbGetQuery(connection, sprintf("SELECT user_id FROM user WHERE user_id = '%s'", df$user_id[i]))
-    order_exists <- dbGetQuery(connection, sprintf("SELECT order_detail_id FROM order_details WHERE order_detail_id = '%s'", df$order_detail_id[i]))
-    if(nrow(user_exists) == 0 || nrow(order_exists) == 0) {
-      cat(sprintf("Skipping entry due to non-existent user_id or order_detail_id for payment_id: %s\n", df$payment_id[i]))
-      next
-    }
-    
-    # Insert validated data into the database
-    insert_query <- sprintf("INSERT INTO payment (payment_id, payment_method, payment_amount, user_id, order_detail_id) VALUES ('%s', '%s', %f, '%s', '%s')",
-                            df$payment_id[i], df$payment_method[i], df$payment_amount[i], df$user_id[i], df$order_detail_id[i])
-    tryCatch({
-      dbExecute(connection, insert_query)
-      cat(sprintf("Successfully inserted payment_id: %s\n", df$payment_id[i]))
-    }, error = function(e) {
-      cat(sprintf("Error in inserting payment_id: %s, Error: %s\n", df$payment_id[i], e$message))
-    })
-  }
-}
 
 # Function to ingest delivery data
 ingest_delivery_data <- function(df, connection) {
-  required_columns <- c("delivery_id", "delivery_type", "delivery_status", "address_id", "user_id", "order_detail_id")
+  required_columns <- c("delivery_id", "delivery_type", "delivery_status", "user_id", "order_detail_id")
   df <- df[!rowSums(is.na(df[required_columns])) > 0, ]
   
   for(i in 1:nrow(df)) {
@@ -198,18 +166,17 @@ ingest_delivery_data <- function(df, connection) {
       next
     }
     
-    # Ensure referenced user_id, address_id, and order_detail_id exist
+    # Ensure referenced user_id, and order_detail_id exist
     user_exists <- dbGetQuery(connection, sprintf("SELECT user_id FROM user WHERE user_id = '%s'", df$user_id[i]))
     order_exists <- dbGetQuery(connection, sprintf("SELECT order_detail_id FROM order_details WHERE order_detail_id = '%s'", df$order_detail_id[i]))
-    address_exists <- dbGetQuery(connection, sprintf("SELECT address_id FROM user WHERE address_id = '%s'", df$address_id[i]))
     if(nrow(user_exists) == 0 || nrow(order_exists) == 0 || nrow(address_exists) == 0) {
-      cat(sprintf("Skipping entry due to non-existent user_id, order_detail_id, or address_id for delivery_id: %s\n", df$delivery_id[i]))
+      cat(sprintf("Skipping entry due to non-existent user_id, order_detail_id for delivery_id: %s\n", df$delivery_id[i]))
       next
     }
     
     # Insert validated data into the database
-    insert_query <- sprintf("INSERT INTO delivery (delivery_id, delivery_type, delivery_status, address_id, user_id, order_detail_id) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')",
-                            df$delivery_id[i], df$delivery_type[i], df$delivery_status[i], df$address_id[i], df$user_id[i], df$order_detail_id[i])
+    insert_query <- sprintf("INSERT INTO delivery (delivery_id, delivery_type, delivery_status, user_id, order_detail_id) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')",
+                            df$delivery_id[i], df$delivery_type[i], df$delivery_status[i], df$user_id[i], df$order_detail_id[i])
     tryCatch({
       dbExecute(connection, insert_query)
       cat(sprintf("Successfully inserted delivery_id: %s\n", df$delivery_id[i]))
@@ -271,14 +238,13 @@ ingest_shipper_data <- function(df, connection) {
 
 
 # Load the data from CSV files or data frames
-user_df <- read_csv("users_table.csv")
-product_df <- read_csv("products_table.csv")
-product_category_df <- read_csv("product_categories_table.csv")
-order_details_df <- read_csv("order_details_table.csv")
-payment_df <- read_csv("payments_table.csv")
-delivery_df <- read_csv("deliveries_table.csv")
-seller_df <- read_csv("sellers_table.csv")
-shipper_df <- read_csv("shippers_table.csv")
+user_df <- read_csv("Synthetic_Data_Generation/users_table.csv")
+product_df <- read_csv("Synthetic_Data_Generation/products_table.csv")
+product_category_df <- read_csv("Synthetic_Data_Generation/product_categories_table.csv")
+order_details_df <- read_csv("Synthetic_Data_Generation/order_details_table.csv")
+delivery_df <- read_csv("Synthetic_Data_Generation/deliveries_table.csv")
+seller_df <- read_csv("Synthetic_Data_Generation/sellers_table.csv")
+shipper_df <- read_csv("Synthetic_Data_Generation/shippers_table.csv")
 
 # Establish a connection to the SQLite database
 my_connection <- dbConnect(RSQLite::SQLite(), "database/database.db")
@@ -288,7 +254,6 @@ ingest_user_data(user_df, my_connection)
 ingest_product_category_data(product_category_df, my_connection)
 ingest_product_data(product_df, my_connection)
 ingest_order_details_data(order_details_df, my_connection)
-ingest_payment_data(payment_df, my_connection)
 ingest_delivery_data(delivery_df, my_connection)
 ingest_seller_data(seller_df, my_connection)
 ingest_shipper_data(shipper_df, my_connection)
