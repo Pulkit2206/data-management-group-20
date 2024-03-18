@@ -18,9 +18,7 @@ dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS user(
   user_password VARCHAR(20) NOT NULL,
   user_mobile_number VARCHAR(20) NOT NULL,
   user_membership_status VARCHAR(20) NOT NULL,
-  address_id INT,
-  PRIMARY KEY (user_id),
-  FOREIGN KEY (address_id) REFERENCES address(address_id)
+  PRIMARY KEY (user_id)
 )")
 
 # Creating the 'address' table
@@ -39,8 +37,8 @@ dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS address(
 # Creating the 'product' table
 dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS product(
   product_id INT,
-  product_description VARCHAR(100) NOT NULL,
-  product_code VARCHAR(20) NOT NULL,
+  product_description VARCHAR(100) NOT NULL UNIQUE,
+  product_code VARCHAR(20) NOT NULL UNIQUE,
   category_id INT,
   product_stock INT NOT NULL,
   product_price INT NOT NULL,
@@ -49,10 +47,12 @@ dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS product(
   product_weight INT NOT NULL,
   product_dimensions INT NOT NULL,
   product_published_datetime DATE NOT NULL,
-  product_average_star_ratings DOUBLE,
+  product_average_star_ratings DOUBLE(3,2),
   product_reviews VARCHAR(50),
+  seller_id INT,
   PRIMARY KEY (product_id),
-  FOREIGN KEY (category_id) REFERENCES product_category(category_id)
+  FOREIGN KEY (category_id) REFERENCES product_category(category_id),
+  FOREIGN KEY (seller_id) REFERENCES seller(seller_id)
 )")
 
 # Creating the 'product_category' table
@@ -80,22 +80,10 @@ dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS order_details(
   order_price INT NOT NULL,
   order_status VARCHAR(30) NOT NULL,
   order_datetime DATETIME,
-  user_id INT,
-  PRIMARY KEY (order_detail_id),
-  FOREIGN KEY (product_id) REFERENCES product(product_id),
-  FOREIGN KEY (user_id) REFERENCES user(user_id)
-)")
-
-# Creating the 'payment' table
-dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS payment(
-  payment_id INT,
-  payment_datetime DATETIME,
   payment_method VARCHAR(20) NOT NULL,
-  payment_amount INT NOT NULL,
-  product_id INT,
   user_id INT,
-  order_detail_id INT,
-  PRIMARY KEY (payment_id),
+  PRIMARY KEY (order_detail_id, product_id, user_id),
+  FOREIGN KEY (product_id) REFERENCES product(product_id),
   FOREIGN KEY (user_id) REFERENCES user(user_id)
 )")
 
@@ -105,12 +93,12 @@ dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS delivery(
   delivery_type VARCHAR(20) NOT NULL,
   delivery_status VARCHAR(20) NOT NULL,
   delivery_datetime DATETIME,
-  address_id INT,
+  product_id INT,
   user_id INT,
   order_detail_id INT,
   shipper_id INT,
   PRIMARY KEY (delivery_id),
-  FOREIGN KEY (address_id) REFERENCES address(address_id),
+  FOREIGN KEY (product_id) REFERENCES address(product_id),
   FOREIGN KEY (user_id) REFERENCES user(user_id),
   FOREIGN KEY (order_detail_id) REFERENCES order_details(order_detail_id),
   FOREIGN KEY (shipper_id) REFERENCES shipper(shipper_id)
@@ -123,6 +111,3 @@ dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS shipper(
   shipper_contact VARCHAR(20) NOT NULL,
   PRIMARY KEY (shipper_id)
 )")
-
-
-

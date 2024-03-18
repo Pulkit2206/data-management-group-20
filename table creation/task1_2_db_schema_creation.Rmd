@@ -27,9 +27,7 @@ CREATE TABLE IF NOT EXISTS user(
   user_password VARCHAR(20) NOT NULL,
   user_mobile_number TEXT NOT NULL UNIQUE,
   user_membership_status VARCHAR(20) NOT NULL,
-  address_id INT,
-  PRIMARY KEY (user_id),
-  FOREIGN KEY (address_id) REFERENCES address(address_id)
+  PRIMARY KEY (user_id)
 )
 ```
 
@@ -63,8 +61,10 @@ CREATE TABLE IF NOT EXISTS product(
   product_published_datetime DATE NOT NULL,
   product_average_star_ratings DOUBLE(3,2),
   product_reviews VARCHAR(50),
+  seller_id INT,
   PRIMARY KEY (product_id),
-  FOREIGN KEY (category_id) REFERENCES product_category(category_id)
+  FOREIGN KEY (category_id) REFERENCES product_category(category_id),
+  FOREIGN KEY (seller_id) REFERENCES seller(category_id)
 )
 ```
 
