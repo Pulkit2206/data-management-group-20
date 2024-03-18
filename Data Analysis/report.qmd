@@ -1,0 +1,290 @@
+---
+title: "part4_coding"
+output: html_document
+date: "2024-03-12"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(rvest)
+library(ggplot2)
+library(lubridate)
+# install.packages('sqldf')
+library(sqldf)
+```
+
+# **4 Data Analysis of User Portrail**
+
+Based on the order data from 2023, we will focus on analyzing data related to user behavior, portraying user profiles in terms of their product preference, loyalty and regional distribution, in order to gain a more comprehensive understanding of their purchasing behavior.
+
+## 4.1 Data Analysis Process
+
+### 4.1.1 Data Preparation
+
+### 4.1.2 Plot Coding
+
+1.  Total sales of products by category in 2023.
+
+```{r}
+# table preparation
+# 连接 data_details_table 和 product_categories_table，提取所需字段
+query1 <- "
+CREATE TABLE data_ctg AS
+SELECT
+    dd.order_id,
+    dd.product_id,
+    pc.category_name,
+    dd.order_qty,
+    dd.order_datetime
+FROM
+    order_details_table AS dd
+INNER JOIN
+    product_categories_table AS pc
+ON
+    dd.category_id = pc.category_id
+"
+sqldf(query1)
+# Extract year, month, and day components into separate columns 
+data_ctg$order_datetime <- ymd_hms(data_ctg$order_datetime)
+data_ctg$order_year <- year(data_ctg$order_datetime)
+data_ctg$order_month <- month(data_ctg$order_datetime)
+data_ctg$order_day <- day(data_ctg$order_datetime)
+# Change to factor
+data_ctg$order_year <- as.factor(data_ctg$order_year)
+data_ctg$order_monthf <- factor(month.abb[data_ctg$order_month], levels=month.abb)
+data_ctg$order_day <- as.factor(data_ctg$order_day)
+data_ctg$order_id <- as.factor(data_ctg$order_id)
+data_ctg$category_name <- as.factor(data_ctg$category_name)
+# plot the result
+data_ctg <- data_ctg %>%
+  group_by(category_name) %>%
+  summarise(total_order_qty = sum(order_qty)) %>%
+  ungroup() %>%
+  mutate(category_name = factor(category_name, levels = rev(unique(category_name))))
+p.total.sales <- ggplot(data_ctg) + 
+  geom_col(aes(y = reorder(category_name, total_order_qty), x = total_order_qty), fill = "skyblue") +  
+  geom_text(aes(y = reorder(category_name, total_order_qty), x = total_order_qty, label = total_order_qty), hjust = -0.2, size = 3, color = "darkgrey", fontface = "italic") +
+  ylab("Category Name") +  
+  xlab("Total Sales Quantity") +  
+  theme_minimal()  +
+  ggtitle("Sales by Category")
+p.total.sales
+```
+
+2.  Distribution of sales of products by category by months in 2023.
+
+```{r}
+data_ctg_month <- data_ctg %>%
+  group_by(order_monthf,category_name) %>%
+  summarise(total_order_qty = sum(order_qty))  %>%
+  arrange(desc(total_order_qty))
+color_palette <- c("brown","orange", 'lightgreen', "lightblue", "lightgrey", "darkgrey")
+p.total.sales.month <- ggplot(data_ctg_month) + 
+  geom_bar(aes(x = total_order_qty, y = order_monthf, fill = category_name), stat = "identity") +
+  scale_fill_manual(values = color_palette) +
+  ylab("Month") +
+  xlab("Total Sales Quantity") +
+  coord_flip() +
+  theme_minimal() +
+  ggtitle("Monthly Sales by Category")
+p.total.sales.month
+```
+
+3.  Total customers by month in 2023.
+
+```{r}
+# table preparation
+query2 <- "
+CREATE TABLE data_orders AS
+SELECT
+    dd.order_id,
+    dd.order_qty,
+    dd.order_price,
+    dd.user_id,
+    pc.user_membership_status,
+    dd.order_datetime
+FROM
+    order_details_table AS dd
+INNER JOIN
+    users_table AS pc
+ON
+    dd.user_id = pc.user_id
+"
+sqldf(query2)
+# Extract year, month, and day components into separate columns 
+data_orders$order_datetime <- ymd_hms(data_orders$order_datetime)
+data_orders$order_year <- year(data_orders$order_datetime)
+data_orders$order_month <- month(data_orders$order_datetime)
+data_orders$order_day <- day(data_orders$order_datetime)
+# Change to factor
+data_orders$order_year <- as.factor(data_orders$order_year)
+data_orders$order_monthf <- factor(month.abb[data_orders$order_month], levels=month.abb)
+data_orders$order_day <- as.factor(data_orders$order_day)
+data_orders$order_id <- as.factor(data_orders$order_id)
+# calculate the user number by month
+total_unique_users <- data_orders %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  group_by(order_monthf) %>%
+  summarise(total_unique_users = n_distinct(user_id))
+# calculate the user with 'prime' by month
+prime_unique_users <- data %>%
+  filter(user_membership_status == 'Prime') %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  group_by(order_monthf) %>%
+  summarise(prime_unique_users = n_distinct(user_id))
+# calculate the user status by month
+unique_users_by_status <- data_orders %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  group_by(order_monthf, user_membership_status) %>%
+  summarise(user_count = n_distinct(user_id))
+# plot
+color_palette <- c("lightblue","orange")
+p.total.customers <- ggplot() +
+  geom_bar(data = unique_users_by_status, aes(x = order_monthf, y = user_count, fill = user_membership_status), stat = "identity", position = "stack") +
+  scale_fill_manual(values = color_palette) +
+  geom_text(data = total_unique_users, aes(x = order_monthf, y = total_unique_users, label = total_unique_users), vjust = -0.5, color = "darkgrey", size = 3, fontface = 'italic') +  
+  geom_line(data = total_unique_users, aes(x = order_monthf, y = total_unique_users, group = 1, color = "Total Unique Users"), linetype = "solid", size = 0.5) +  
+  geom_line(data = prime_unique_users, aes(x = order_monthf, y = prime_unique_users, group = 1, color = "Prime Unique Users"), linetype = "solid", size = 0.2) +  
+  xlab("Order Month") +
+  ylab("Unique User Count") +
+  theme_minimal() +
+  scale_fill_manual(values = color_palette) +
+  scale_color_manual(values = c("Total Users" = 'grey', "Prime Users" = "red")) +
+  ggtitle("User Distribution by Membership Status by Month") +
+  guides(fill = guide_legend(title = "Membership Status"), linetype = guide_legend(title = "Orders Count"))
+p.total.customers
+```
+
+4.  The order frequency and price of customers by month.
+
+```{r}
+# calculate the order number by month by membership
+data_member <- data_orders %>%
+group_by(user_membership_status,order_id,order_year,order_monthf) %>%
+summarise(total_order = n(), total_price = sum(order_price)) 
+# calculate the order number by month
+total_orders_by_month <- data_member %>%
+  group_by(order_monthf) %>%
+  summarise(total_orders = n()) 
+# plot
+p.order.qty <- ggplot(data_member) + 
+  geom_bar(aes(x = order_monthf, fill = user_membership_status)) + 
+  labs(x = "Month", y = "Number of Orders", fill = "Membership Status") +
+  scale_fill_manual(values = color_palette) +
+  theme_minimal() +
+  ggtitle("Orders Count by Membership Status by Month") +
+  geom_line(data = total_orders_by_month, aes(x = order_monthf, y = total_orders, group = 1, linetype = "Total Orders"), color = "darkgrey", size = 0.5) +
+  geom_text(data = total_orders_by_month, aes(x = order_monthf, y = total_orders, label = total_orders), vjust = -0.5, color = "darkgrey", size = 2.5, fontface = 'italic') + 
+  scale_linetype_manual(values = c("Total Orders" = "solid")) +
+  guides(fill = guide_legend(title = "Membership Status"), linetype = guide_legend(title = "Orders Count"))
+data_member_avg <- data_member %>%
+group_by(user_membership_status,order_year,order_monthf) %>%
+summarise(avg_price = mean(total_price)) 
+p.order.price <- ggplot(data_member_avg) +
+  geom_point(aes(x = order_monthf, y = avg_price, col = user_membership_status)) +
+  geom_line(aes(x = order_monthf, y = avg_price, group = user_membership_status, col = user_membership_status)) +
+  labs(x = "Month", y = "Average Total Price", col = "Membership Status") +
+  theme_minimal() +
+  ggtitle("Orders Price by Membership Status by Month")
+p.order.qty
+p.order.price
+```
+
+5.  Regional Distribution of Orders
+
+```{r}
+
+
+# table preparation
+query3 <- "
+CREATE TABLE data_locations AS
+SELECT
+    dd.order_id,
+    dd.user_id,
+    dd.order_qty,
+    dd.order_price,
+    pc.address_state,
+    dd.order_datetime
+FROM
+    order_details_table AS dd
+INNER JOIN
+    users_table AS pc
+ON
+    dd.user_id = pc.user_id
+"
+sqldf(query3)
+# Extract year, month, and day components into separate columns 
+data_locations$order_datetime <- ymd_hms(data_locations$order_datetime)
+data_locations$order_year <- year(data_locations$order_datetime)
+data_locations$order_month <- month(data_locations$order_datetime)
+data_locations$order_day <- day(data_locations$order_datetime)
+# Change to factor
+data_locations$order_year <- as.factor(data_locations$order_year)
+data_locations$order_monthf <- factor(month.abb[data_locations$order_month], levels=month.abb)
+data_locations$order_day <- as.factor(data_locations$order_day)
+data_locations$order_id <- as.factor(data_locations$order_id)
+# plot the result
+data_state <- data_locations %>%
+group_by(user_id,address_state) %>%
+summarise(total_order_qty = sum(order_qty), total_price = sum(order_price)) 
+data_state$user_id <- as.factor(data_state$user_id)
+data_state_count <- data_state %>% group_by(address_state) %>% count(address_state) %>% arrange(desc(n)) %>% head(10)
+data_state_count$address_state <- as.factor(data_state_count$address_state)
+p.region <- ggplot(data_state_count) + 
+  geom_bar(aes(x = reorder(address_state, n), y = n), stat = "identity") +
+  geom_text(aes(x = reorder(address_state, n), y = n, label = n), vjust = 0.5, hjust = -0.1, size = 2.5, color = 'black', fontface = 'italic') +
+  labs(x = "State", y = "The number of customers") + 
+  coord_flip() +
+  theme_minimal() +
+  ggtitle("TOP 10 Deliveried States")
+p.region
+```
+
+## 4.2 Analytics Results
+
+### 4.2.1 Product Preference
+
+First, we analyzed user order data to understand the sales quantity of each product as well as the monthly trend.
+
+After summarizing the number of sales of each product in the order we get the annual sales figures for each category. Books, Clothing and Electronics were the top selling categories with sales of 800, 420 and 360 respectively, accounting for 40%, 21% and 18% of annual product sales, indicating that students have the greatest demand for learning materials, school-created apparel peripherals are popular, and teaching-supported electronics have steady sales. However, Toys & Game's sales of less than 100 suggests that school-branded peripheral products are not attractive enough to students, which may be due to insufficient product design, high pricing, or diversion from offline stores, and the specific reasons require further research.
+
+```{r}
+p.total.sales
+```
+
+On a monthly data basis, sales of products in the Books and Electronics categories increased significantly during the start of the new semester season (September) as well as during the exam month (April), suggesting that both categories need to be stocked up before the peak season. Sales of products in the Clothing and Grocery & Food categories, which are daily consumables for students, are relatively stable.
+
+```{r}
+p.total.sales.month
+```
+
+### 4.2.2 Member loyalty
+
+The University of usa shopping website has implemented a fee-based membership system, with members enjoying benefits such as priority delivery as well as cashback on points. We analyzed the difference in purchasing capacity between member and non-member groups to see if membership is effective in increasing user loyalty and spending.
+
+From the monthly distribution chart of the number of members of users who have made purchases, we can see that most of the users have opened a membership, and the percentage of members is rising month by month, which shows that the membership is attractive enough to our users.
+
+```{r}
+p.total.customers
+```
+
+Therefore, we further analyzed the differences in the number of purchases and order prices of member users. It is obvious that member users contribute most of the order quantity, and the number of orders placed by members is much higher than that of non-members, which also indicates that member users will use the shopping site more frequently.However, the difference between members and non-members in the number of orders prices was more unusual in May and September, with non-members purchasing substantially more during these time periods, due to the large alumni socials held at the university in May and September, which attracted a large number of alumni to return to campus and purchase souvenirs.
+
+```{r}
+p.order.qty
+```
+
+```{r}
+p.order.price
+```
+
+### 4.2.3 Regional Distribution
+
+Express delivery efficiency is an important element of the user's shopping experience, so we plan to enhance express delivery services in popular delivery areas. Through the chart, we can see that the top ten cities in the order delivery quantity ranking Texas has the highest order quantity, which indicates that the school neighborhood is still the most important delivery area, we can increase the offline store pickup service and so that students can get the products faster. Meanwhile, California and Florida, as large neighboring cities, also have higher delivery needs, which means we should prioritize improving delivery efficiency in these cities.
+
+```{r}
+p.region
+```
