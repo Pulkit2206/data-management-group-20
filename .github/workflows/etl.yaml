@@ -59,6 +59,9 @@ jobs:
         run: | 
           git config --global user.email "namit2000.singh@gmail.com"
           git config --global user.name "Namitt"
+      - name: Commit files
+        run: |
+          git commit -m "Add regression plot figure"
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
