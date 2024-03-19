@@ -1,8 +1,8 @@
 name: ETL Workflow for Group 20
 
 on:
-#  schedule:
-#    - cron: '0 */3 * * *' # Run every 3 hours
+  schedule:
+    - cron: '0 */6 * * *' # Run every 6 hours
   push:
     branches: [ main ]
 
@@ -26,17 +26,17 @@ jobs:
       - name: Install packages
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          Rscript -e 'install.packages(c("ggplot2", "dplyr", "readr", "tidyr", "RSQLite", "fakir", "charlatan", "generator","DBI","lubridate"))'
+          Rscript -e 'install.packages(c("ggplot2", "dplyr", "readr", "tidyr", "RSQLite", "generator","DBI","lubridate"))'
       - name: Execute R script to update the database with new entry (second data phase), before appending, it compares new data with the existing database to prevent duplicate entries in database
         run: |
           Rscript R/Load_data.R
       - name: Execute R script to validate the new entries, their formats and referential integrity for each table
         run: |
           Rscript R/Table_Creation.R    
-      - name: Execute R script to update the analysis (plots, etc.) by considering new data arrivals 
+      - name: Execute R script to validate the data
         run: |
           Rscript R/Validation.R    
-      - name: Execute R script to update the analysis (plots, etc.) by considering new data arrivals
+      - name: Execute R script to update the analysis 
         run: |
           Rscript Data_Analysis/DataAnalysis.R 
       - name: Add collaborator 1
@@ -59,11 +59,15 @@ jobs:
         run: | 
           git config --global user.email "namit2000.singh@gmail.com"
           git config --global user.name "Namitt"
+      - name: Add collaborator 6
+        run: | 
+          git config --global user.email "chananya.yodkaew@warwick.ac.uk"
+          git config --global user.name "Chananya2027735" 
       - name: Commit files
         run: |
           git add database/database.db
           git add Rplots.pdf
-          git commit -m "Add regression plot figure"
+          git commit -m "Add plot figure"
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
