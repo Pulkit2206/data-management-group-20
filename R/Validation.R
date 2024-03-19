@@ -9,8 +9,8 @@ library(dplyr)
 
 # Ingest User Data Function
 ingest_user_data <- function(df, connection) {
-  required_columns <- c("user_id", "user_email", "user_password", "user_mobile_number",
-                        "address_id", "address_city", "address_country", "address_state", "address_postcode", "address_type")
+  required_columns <- c("user_id", "user_email", "user_password", "user_mobile_number", "address_id",
+                    "address_city", "address_country", "address_state", "address_postcode", "address_type")
   
   # Filter out rows with NA in any of the required columns
   df <- df[!rowSums(is.na(df[required_columns])) > 0, ]

@@ -472,7 +472,7 @@ Having formed the large dataset, we are now going to create separate tables for 
 # 1. Users Table
 user_table <- combined_data %>% 
   distinct(user_id, user_email, user_mobile_number, address_id, .keep_all = TRUE) %>% 
-  select(user_id, user_first_name, user_last_name, user_email, user_password, user_mobile_number, user_membership_status, address_id, user_id, address_city, address_country, address_state, address_postcode, address_type)
+  select(user_id, user_first_name, user_last_name, user_email, user_password, user_mobile_number, user_membership_status, user_id, address_id, address_city, address_country, address_state, address_postcode, address_type)
 write.csv(user_table, "users_table.csv", row.names = FALSE)
 
 
