@@ -6,7 +6,6 @@ library(lubridate)
 
 
 # create table used for analysis
-combined_data <- read.csv("Synthetic_Data_Generation/combined_mockaroo_with_synthetic.csv")
 users_table <- read.csv("Synthetic_Data_Generation/users_table.csv")
 products_table <- read.csv("Synthetic_Data_Generation/products_table.csv")
 product_categories_table <- read.csv("Synthetic_Data_Generation/product_categories_table.csv")
