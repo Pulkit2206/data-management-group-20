@@ -3,6 +3,8 @@
 
 #Ingesting, Data Validation and Referential Integrity Checks
 
+
+
 library(readr)
 library(RSQLite)
 library(dplyr)
