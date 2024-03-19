@@ -18,7 +18,6 @@ dbExecute(my_connection, "CREATE TABLE IF NOT EXISTS user(
   user_password VARCHAR(20) NOT NULL,
   user_mobile_number VARCHAR(20) NOT NULL,
   user_membership_status VARCHAR(20) NOT NULL,
-  address_id VARCHAR(30) NOT NULL,
   address_city VARCHAR(30) NOT NULL,
   address_country VARCHAR(30) NOT NULL,
   address_state VARCHAR(20) NOT NULL,
