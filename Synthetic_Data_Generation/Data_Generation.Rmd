@@ -461,7 +461,7 @@ combined_data$payment_datetime <- pmin(combined_data$payment_datetime, combined_
 
 ```{r}
 # Saving combined_data as CSV
-write.csv(combined_data, "final_ecommerce.csv", row.names = FALSE)
+write.csv(combined_data, "data_upload\final_ecommerce.csv", row.names = FALSE)
 ```
 
 #Making Multiple Tables
